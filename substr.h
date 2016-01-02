@@ -20,7 +20,7 @@ int substr_init(struct substr *);
 int substr_append(struct substr *, const char *);
 char *substr_replace(const char *, const struct substr *);
 int substr_extract(struct substr *, const char *, const regmatch_t *);
-int substr_match(const struct substr *, const char *, const regmatch_t *);
+int substr_match(const struct substr *, const char *, const regmatch_t *, int cmd_index); //v1.3 add cmd_index
 int substr_wordsplit(struct substr *, const char *);
 int substr_copy(struct substr *, struct substr *);
 int substr_copy_replace(struct substr *, struct substr *, struct substr *);

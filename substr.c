@@ -181,23 +181,51 @@ int substr_extract(struct substr *ss, const char *str, const regmatch_t *match)
 	return 0;
 }
 
-int substr_match(const struct substr *ss, const char *str, const regmatch_t *match)
+int substr_match(const struct substr *ss, const char *str, const regmatch_t *match, int cmd_index)
 {
 	int i;
-
+	for (i = 0; i < ss->nstr ; i++)
+	{
+		dbg("%s:[%i] = %s", __func__, i, ss->str[i]);
+	}
+	dbg("%s: str = %s", __func__, str);
 	/* first, make sure number of substrings match */
 	for (i = 1; i <= MAX_SUBS + 1 && match[i].rm_so != -1; i++)
-		;
+	{
+		dbg("%s: i=%i rm_so=%i rm_eo = %i nstr=%i", __func__, i, match[i].rm_so, match[i].rm_eo, ss->nstr);
+	}
+	//dbg("%s: i=%i rm_so=%i rm_eo = %i nstr=%i", __func__, i, match[i].rm_so, match[i].rm_eo, ss->nstr);
 	if (ss->nstr != i - 1)
 		return 0;
 
 	/* compare each substring */
-	for (i = 1; i <= ss->nstr; i++) {
-		int slen = match[i].rm_eo - match[i].rm_so;
-		if (strlen(ss->str[i - 1]) != slen)
+	dbg("%s: cmd_index=%i", __func__, cmd_index);
+	if(cmd_index <= 0)
+	{
+		for (i = 1; i <= ss->nstr; i++) {
+			int slen = match[i].rm_eo - match[i].rm_so;
+			if (strlen(ss->str[i - 1]) != slen)
+				return 0;
+			if (strncmp(ss->str[i - 1], str + match[i].rm_so, slen))
+				return 0;
+		}
+	}
+	else
+	{
+		if(cmd_index > ss->nstr)
+		{
+			dbg("%s: Error: cmd_index(%i) > ss->nstr(%i)", __func__, cmd_index, ss->nstr);
 			return 0;
-		if (strncmp(ss->str[i - 1], str + match[i].rm_so, slen))
+		}
+
+		int slen = match[cmd_index].rm_eo - match[cmd_index].rm_so;
+		if (strlen(ss->str[cmd_index - 1]) != slen)
 			return 0;
+		if (strncmp(ss->str[cmd_index - 1], str + match[cmd_index].rm_so, slen))
+		{
+			dbg("%s: ss=%s > str=%s", ss->str[cmd_index - 1], str + match[cmd_index].rm_so);
+			return 0;
+		}
 	}
 	return 1;
 }

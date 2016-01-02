@@ -64,6 +64,7 @@ int action_copy_empty(struct f2b_action *dst, struct f2b_action *src)
 {
 #define ASSIGN_IF_ZERO(f) if (!dst->f) dst->f = src->f
 	ASSIGN_IF_ZERO(re);
+	ASSIGN_IF_ZERO(re_dec);
 	ASSIGN_IF_ZERO(limit);
 	ASSIGN_IF_ZERO(timeout);
 	if (!dst->ban.nstr)

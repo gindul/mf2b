@@ -13,6 +13,8 @@ Building the Source
 In most cases, a simple 'make' should do the trick. In case the outcome is not
 as expected, you may want to have a look at the top-level Makefile for details.
 
+For cross compiling add env variable CROSS_COMPILE (like CROSS_COMPILE=arm-oe-linux-gnueabi-).
+
 Installing the Binaries
 -----------------------
 

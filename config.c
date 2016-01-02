@@ -76,10 +76,12 @@ static int parse_config_str(char *cfgstr,
 		ST_REG = 0,
 		ST_FILE,
 		ST_ARG_MATCH,
+		ST_ARG_MATCH_DEC,
 		ST_ARG_LIMIT,
 		ST_ARG_TIMEOUT,
 		ST_ARG_BAN,
 		ST_ARG_UNBAN,
+		ST_ARG_CMP_INDEX,
 	} state = ST_REG;
 
 	substr_init(&files_ss);
@@ -91,6 +93,7 @@ static int parse_config_str(char *cfgstr,
 	curact = defact;
 	curact->limit = 3;
 	curact->timeout = 60;
+	curact->cmp_index = -1;
 
 	substr_wordsplit(&cfg_ss, cfgstr);
 #define W_IS(str) (!strcmp(*w, str))
@@ -104,7 +107,17 @@ static int parse_config_str(char *cfgstr,
 			} else {
 				regfree(curact->re);
 			}
-			regcomp(curact->re, *w, 0); /* XXX: allow passing flags */
+			regcomp(curact->re, *w, REG_EXTENDED); /* XXX: allow passing flags */
+			state = ST_REG;
+			break;
+		case ST_ARG_MATCH_DEC:
+			if (!curact->re_dec) {
+				curact->re_dec = malloc(sizeof(*curact->re_dec));
+				memset(curact->re_dec, 0, sizeof(*curact->re_dec));
+			} else {
+				regfree(curact->re_dec);
+			}
+			regcomp(curact->re_dec, *w, REG_EXTENDED); /* XXX: allow passing flags */
 			state = ST_REG;
 			break;
 		case ST_ARG_LIMIT:
@@ -123,6 +136,14 @@ static int parse_config_str(char *cfgstr,
 			}
 			state = ST_REG;
 			break;
+		case ST_ARG_CMP_INDEX:
+			curact->cmp_index = strtol(*w, &endptr, 0);
+			if (*endptr) {
+				err("parsing cmp_index arg '%s' failed", *w);
+				goto out_syntax_error;
+			}
+			state = ST_REG;
+			break;
 		case ST_ARG_BAN:
 			substr_wordsplit(&curact->ban, *w);
 			state = ST_REG;
@@ -133,8 +154,10 @@ static int parse_config_str(char *cfgstr,
 			break;
 		case ST_FILE:
 			if (W_IS("match") ||
+				W_IS("unmatch") ||
 			    W_IS("limit") ||
 			    W_IS("timeout") ||
+			    W_IS("cmd_index") ||
 			    W_IS("ban") ||
 			    W_IS("unban") ||
 			    W_IS("}")) {
@@ -145,10 +168,14 @@ static int parse_config_str(char *cfgstr,
 		case ST_REG:
 			if (W_IS("match")) {
 				state = ST_ARG_MATCH;
+			} else if (W_IS("unmatch")) {
+				state = ST_ARG_MATCH_DEC;
 			} else if (W_IS("limit")) {
 				state = ST_ARG_LIMIT;
 			} else if (W_IS("timeout")) {
 				state = ST_ARG_TIMEOUT;
+			} else if (W_IS("cmd_index")) {
+				state = ST_ARG_CMP_INDEX;
 			} else if (W_IS("ban")) {
 				state = ST_ARG_BAN;
 			} else if (W_IS("unban")) {

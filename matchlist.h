@@ -25,4 +25,10 @@ int matchlist_get(struct matchlist, int);
 void matchlist_add(struct matchlist *, int);
 void matchlist_drop_first(struct matchlist *);
 
+#define UNIT_TESTING
+
+#ifdef UNIT_TESTING
+	void matchlist_print(struct matchlist list);
+#endif
+
 #endif /* _MATCHLIST_H */

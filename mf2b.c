@@ -1,6 +1,7 @@
 /* mf2b.c - mf2b core routines
  *
  * Copyright (C) 2014  Phil Sutter <phil@nwl.cc>
+ * Changed Micro Fail2Ban by Radu Donos <Radu.Donos@addgrup.com>
  *
  * This file is part of Micro Fail2Ban, licensed under
  * GPLv3 or later. See file LICENSE in this source tree.
@@ -24,6 +25,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <execinfo.h>
 
 #include "action.h"
 #include "config.h"
@@ -121,20 +123,67 @@ static int check_unban(struct f2b_action *act)
 	return 0;
 }
 
+static void unban(struct f2b_action *act, regmatch_t *match, char *str)
+{
+	int i, j;
+	char fname[] = "[unban]";
+
+	dbg("%s: Search math in list", fname);
+	for (i = 0; i < act->nmatch; i++) {
+		if (substr_match(&act->match[i].subs, str, match, act->cmp_index))
+			break;
+	}
+
+	if(act->nmatch == 1) {
+		dbg("%s: Found only 1 match(i=%i)", fname, i);
+		i=0;
+	}
+
+	if (i < act->nmatch)
+	{
+		dbg("%s: [unmatch], got index %d, nmatch is %d", fname, i, act->nmatch);
+		act->match[i].mlist.last = 0;
+		dbg("%s: Clear %i matches",fname, act->match[i].mlist.full);
+		for (j = 0; j < act->match[i].mlist.full; j++) {
+			act->match[i].mlist.elem[j] = 0;
+		}
+		dbg("%s: Exec unban", fname);
+		exec_replace(&act->unban, &act->match[i].subs);
+		act->match[i].banned = 0;
+		dbg("%s: Clear done", fname);
+	}
+	else
+	{
+		dbg("%s: Match not found %s", fname, str);
+	}
+}
+
 int match_line(struct f2b_desc *desc, char *str)
 {
 	int i, j;
 	struct f2b_action *act;
-	regmatch_t match[MAX_SUBS + 1];	/* allocate for one more, first is always full line */
+	regmatch_t match[MAX_SUBS + 1], unmatch[MAX_SUBS + 1];	/* allocate for one more, first is always full line */
 
 	dbg("matching line: %s", str);
 	for (i = 0; i < desc->nact; i++) {
 		act = desc->act[i];
 		if (regexec(act->re, str, MAX_SUBS + 1, match, 0))
-			continue;
+		{
+			//regexec returned !=0 (ie REG_NOMATCH)
+			//check regex re_dec
+			if(act->re_dec != NULL)
+			{
+				if (regexec(act->re_dec, str, MAX_SUBS + 1, unmatch, 0))
+					continue; //REG_NOMATCH, continue for..
+				
+				unban(act, unmatch, str);
+				
+				break;
+			}
+		}
 		dbg("%s: got a match for action %d", desc->fname, i);
 		for (j = 0; j < act->nmatch; j++) {
-			if (substr_match(&act->match[j].subs, str, match))
+			if (substr_match(&act->match[j].subs, str, match, act->cmp_index))
 				break;
 		}
 		dbg("%s: subs matched, got index %d, nmatch is %d", desc->fname, j, act->nmatch);
@@ -234,6 +283,92 @@ int check_fd(struct f2b_desc *desc, int fd)
 	return fd;
 }
 
+static void sing_exit_update(int sig, siginfo_t *si, void *ptr)
+{
+	crit("%s: kill proc called, signal %i.", __func__, sig);
+}
+
+#define GET_PC_FROM_CONTEXT(c) ((void*)((ucontext_t *)(c))->uc_mcontext.arm_pc)
+
+static void signal_error(int sig, siginfo_t *si, void *ptr)
+{
+	void*	ErrorAddr;
+	void*	Trace[16];
+	int		x;
+	int		TraceSize;
+	char**	Messages;
+
+	crit("[DAEMON] Signal: %s, Addr: 0x%08X\n", strsignal(sig), (unsigned int)si->si_addr);
+    ErrorAddr = GET_PC_FROM_CONTEXT(ptr);
+	TraceSize = backtrace(Trace, 16);
+	Trace[1] = ErrorAddr;
+	// получим расшифровку трасировки
+	Messages = backtrace_symbols(Trace, TraceSize);
+	if (Messages) {
+		crit("== Backtrace (%i) ==", TraceSize);
+		for (x = 1; x < TraceSize; x++) {
+		        crit("%s", Messages[x]);
+		}
+
+		crit("== End Backtrace ==");
+		free(Messages);
+	}
+
+	crit("[DAEMON] Stopped");
+	exit(EXIT_FAILURE);
+}
+
+void addSignCB(void)
+{
+	struct sigaction exit_proc;
+	struct sigaction sigact;
+
+	exit_proc.sa_flags = SA_SIGINFO;
+	exit_proc.sa_sigaction = sing_exit_update;
+	sigemptyset(&exit_proc.sa_mask);
+
+	sigaction(SIGHUP, &exit_proc, 0);
+	sigaction(SIGQUIT, &exit_proc, 0);
+	sigaction(SIGUSR1, &exit_proc, 0);
+	sigaction(SIGUSR2, &exit_proc, 0);
+
+	sigact.sa_flags = SA_SIGINFO;
+	// задаем функцию обработчик сигналов
+	sigact.sa_sigaction = signal_error;
+	sigemptyset(&sigact.sa_mask);
+	// установим наш обработчик на сигналы
+	sigaction(SIGFPE, &sigact, 0); // ошибка FPU
+	sigaction(SIGILL, &sigact, 0); // ошибочная инструкция
+	sigaction(SIGSEGV, &sigact, 0); // ошибка доступа к памяти
+	sigaction(SIGBUS, &sigact, 0); // ошибка шины, при обращении к физической памяти
+}
+
+off_t fsize(long f_d)
+{
+    struct stat st;
+
+    if (fstat(f_d, &st) == 0)
+        return st.st_size;
+
+    crit("Cannot determine size of fd %i: %s",
+            f_d, strerror(errno));
+
+    return -1;
+}
+
+void check_fd_seek0(long f_d)
+{
+	off_t current, size;
+	current = lseek(f_d, 0, SEEK_CUR);
+	size = fsize(f_d);
+	if(current > size) {
+		usleep(100000UL); //sleep for 100 ms
+		size = fsize(f_d);
+		crit("log file is rotated (current: %d, size: %d), seek to eof", current, size);
+		lseek(f_d, 0, SEEK_END);
+	}
+}
+
 #define INOTIFY_EVENTS \
 	(IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVE_SELF | IN_MOVE)
 
@@ -248,6 +383,7 @@ int main(int argc, char **argv)
 	char *config_file = NULL, *chroot_path = NULL, *pidfile = NULL;
 
 	set_log_output(argv[0], "stderr");
+	addSignCB();
 
 	while ((opt = getopt(argc, argv, "c:fl:p:qr:Vv")) != -1) {
 		switch (opt) {
@@ -280,6 +416,7 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			crit("%s version " VERSION " Copyright (C) 2014 by Phil Sutter", argv[0]);
+			crit("Changed by Radu Donos <Radu.Donos@addgrup.com>");
 			return 0;
 		case 'v':
 			add_log_level(1);
@@ -347,8 +484,10 @@ int main(int argc, char **argv)
 		for (i = 0; i < ndesc; i++) {
 			if (pfd[i].revents) {
 				read(pfd[i].fd, &inev, sizeof(inev));
-				if (inev.mask & IN_MODIFY)
+				if (inev.mask & IN_MODIFY) {
+					check_fd_seek0(desc[i].fd);
 					read_lines(&desc[i], desc[i].fd);
+				}
 				if (inev.mask & ~IN_MODIFY)
 					desc[i].fd = check_fd(&desc[i], desc[i].fd);
 			}

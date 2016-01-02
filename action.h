@@ -19,11 +19,13 @@ struct f2b_match {
 
 struct f2b_action {
 	regex_t *re;
+	regex_t *re_dec; //decrement counter
 	int limit;
 	int timeout; /* seconds */
 	struct substr ban, unban;
 	int nmatch; /* length of match array */
 	struct f2b_match *match;
+	int cmp_index; /*compare group index*/
 };
 
 struct f2b_action *get_new_action(void);

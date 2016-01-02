@@ -1,3 +1,10 @@
+version 1.4
+	* Add strip rule to Makefile.
+	* Change Makefile for cross compiling.
+	* Add rule for unmach and run unban action for unmach.
+	* Now use C Regex Extended.
+	* Add cmd_index for use multiple rules, but increment same ban counter.
+
 version 1.1
 	* improved config sample in mf2b.conf.5
 	* compile using -Os per default

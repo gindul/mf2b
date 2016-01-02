@@ -1,9 +1,11 @@
-VERSION := 1.1
+VERSION := 1.4
 
 # maximum number of subpatterns recognised
 MAX_SUBS := 16
 
-CC := gcc
+STRIP := ${CROSS_COMPILE}strip
+
+CC := ${CROSS_COMPILE}gcc
 CFLAGS := -Wall -Werror -pedantic -std=c99 -Os \
           -DMAX_SUBS=${MAX_SUBS} -DVERSION="\"${VERSION}\""
 INSTALL := install
@@ -17,6 +19,9 @@ MF2B_OBJ := $(patsubst %.c,%.o,${MF2B_SRC})
 
 mf2b: ${MF2B_OBJ}
 
+strip: mf2b
+	${STRIP} mf2b
+	
 clean:
 	-rm -f ${MF2B_OBJ} mf2b.o mf2b
 

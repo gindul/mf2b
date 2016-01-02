@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "matchlist.h"
-
+#include "logging.h"
 
 static int next_idx(struct matchlist *list, int idx)
 {
@@ -77,12 +77,12 @@ void matchlist_drop_first(struct matchlist *list)
 }
 
 #ifdef UNIT_TESTING
-static void matchlist_print(struct matchlist list)
+void matchlist_print(struct matchlist list)
 {
-	printf("{ nelem = %d, full = %d, first = %d, last = %d, elem = { ",
+	dbg("{ nelem = %d, full = %d, first = %d, last = %d, elem = { ",
 			list.nelem, list.full, list.first, list.last);
 	while (list.nelem-- > 0)
-		printf("%d, ", *(list.elem++));
-	printf("} }\n");
+		dbg("%d, ", *(list.elem++));
+	dbg("} }\n");
 }
 #endif
