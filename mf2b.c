@@ -302,7 +302,7 @@ static void signal_error(int sig, siginfo_t *si, void *ptr)
     ErrorAddr = GET_PC_FROM_CONTEXT(ptr);
 	TraceSize = backtrace(Trace, 16);
 	Trace[1] = ErrorAddr;
-	// получим расшифровку трасировки
+	// getting backtrace
 	Messages = backtrace_symbols(Trace, TraceSize);
 	if (Messages) {
 		crit("== Backtrace (%i) ==", TraceSize);
@@ -333,14 +333,14 @@ void addSignCB(void)
 	sigaction(SIGUSR2, &exit_proc, 0);
 
 	sigact.sa_flags = SA_SIGINFO;
-	// задаем функцию обработчик сигналов
+	// set error handler
 	sigact.sa_sigaction = signal_error;
 	sigemptyset(&sigact.sa_mask);
-	// установим наш обработчик на сигналы
-	sigaction(SIGFPE, &sigact, 0); // ошибка FPU
-	sigaction(SIGILL, &sigact, 0); // ошибочная инструкция
-	sigaction(SIGSEGV, &sigact, 0); // ошибка доступа к памяти
-	sigaction(SIGBUS, &sigact, 0); // ошибка шины, при обращении к физической памяти
+	// Set handler for fault signals
+	sigaction(SIGFPE, &sigact, 0); // Error FPU
+	sigaction(SIGILL, &sigact, 0); // Error instructions
+	sigaction(SIGSEGV, &sigact, 0); // Mem Access error
+	sigaction(SIGBUS, &sigact, 0); // Bus fault
 }
 
 off_t fsize(long f_d)

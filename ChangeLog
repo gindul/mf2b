@@ -4,6 +4,8 @@ version 1.4
 	* Add rule for unmach and run unban action for unmach.
 	* Now use C Regex Extended.
 	* Add cmd_index for use multiple rules, but increment same ban counter.
+	* Seek to 0 if log file is rotated.
+	* Add signal handlers to logging kill signals and hard faults.
 
 version 1.1
 	* improved config sample in mf2b.conf.5
