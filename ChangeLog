@@ -1,0 +1,16 @@
+version 1.1
+	* improved config sample in mf2b.conf.5
+	* compile using -Os per default
+	* lots of config parser fixes
+	* drop insecure call to system(), use execv() instead
+	* smaller runtest fixes
+	* recognise when strtol() fails
+	* quite large code rewrites in various places
+	* improve shipped sample config
+	* more unit tests
+	* allow calling cppcheck from Makefile, fix most of the errors it
+	  reports (there seems to be one false-positive, though)
+	* implement support for writing a pidfile
+
+version 1.0
+	* initial commit, quite buggy and insecure

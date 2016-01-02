@@ -1,0 +1,48 @@
+#!/bin/bash
+
+touch simple.log
+$MF2B -f -c simple_param.conf &
+f2b_pid=$!
+
+cleanup() {
+	kill $f2b_pid
+	for ext in bla blub plop; do
+		[[ -e MATCHED.$ext ]] && rm MATCHED.$ext
+	done
+	rm simple.log
+}
+trap cleanup EXIT
+
+sleep 1
+rm -f MATCHED.bla
+echo "this will match bla" >>simple.log
+echo "this will match bla" >>simple.log
+echo "this will match bla" >>simple.log
+for ((i = 0; i < 3; i++)); do
+	[[ -e MATCHED.bla ]] && break
+	sleep 1
+done
+if [[ $i -lt 3 ]]; then
+	echo "triggered after $i seconds"
+else
+	echo "did not trigger?!"
+	exit 1
+fi
+
+sleep 3
+[[ -e MATCHED.bla ]] && {
+	echo "did not unban?!"
+	exit 1
+}
+rm -f MATCHED.bla
+
+sleep 1
+echo "this will match bla" >>simple.log
+echo "this will match blub" >>simple.log
+echo "this will match plop" >>simple.log
+sleep 1
+[[ -e MATCHED.bla || -e MATCHED.blub || -e MATCHED.plop ]] && {
+	echo "did trigger despite timeout?!"
+	exit 1
+}
+exit 0

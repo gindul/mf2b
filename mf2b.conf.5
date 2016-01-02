@@ -1,0 +1,80 @@
+.TH mf2b.conf 5 "JANUARY 2014" Linux "File Format Descriptions"
+.SH NAME
+mf2b.conf \- micro fail2ban configuration file format
+.SH DESCRIPTION
+The configuration file for
+.B mf2b
+specifies which log files are to be watched for new entries and how to react on
+them. It defines how interesting entries look like, how many of them have to
+occur in what period of time and what commands are to be executed upon reaching
+the configured limit and when free "slots" become available.
+.SH OPTIONS
+.IP "ban command"
+What to execute upon reaching the threshold. In
+.I command ,
+subpatterns may be accessed using $1 to $n.
+.IP "limit n"
+The threshold value, i.e. how many matching log entries must occur before action
+is taken. The parameter
+.I n
+is a positive number.
+.IP "match expression"
+This defines how an interesting line in the given log file must look like to
+be accounted for. Note that subpatterns (i.e., parts of the
+.I expression
+enclosed in braces) must match in order for the log entry to be assumed as
+\'equal\'.
+.IP "timeout n"
+The timeout of log matching log entries in seconds, i.e. how old a log entry
+may become in order to still be accounted to
+.IR limit .
+.IP "unban command"
+What to execute when the threshold is underrun, i.e. when the number of matching
+log entries that occured in the last
+.IR timeout
+seconds becomes lower than
+.IR limit .
+In
+.I command ,
+subpatterns may be accessed using $1 to $n.
+.IP "{ ... }"
+The curly braces denote a confined set of configuration options for (a set of)
+log files. They have to be preceeded by one or more log files.
+.SH EXAMPLES
+ # default options
+ limit 3
+ timeout 60
+ ban "iptables -A f2b -s $1 -j DROP"
+ unban "iptables -D f2b -s $1 -j DROP"
+ # check for login failures via SSH
+ /var/log/auth.log /var/log/messages {
+ 	match "sshd.*: Invalid user .* from \\(.+\\)"
+ }
+ # check for "security scanners" checking vulnerable URLs
+ /var/log/lighttpd/access.log {
+ 	match "::ffff:\\(.+\\) .* \\"GET /w00tw00t\\.at\\..*"
+ 	# this overrides the defaults from above
+ 	limit 1
+ 	timeout 3600
+ }
+.SH FILES
+.I /etc/mf2b.conf
+.RS
+The default configuration file.
+.SH BUGS
+When expanding the variables in the commands from
+.IR ban /
+.IR unban
+options, common shell escapes are being escaped. This serves as rudimental
+protection against injection attacks, though one should not rely upon them. So
+in order to e.g. match an IPV4 address, using something like
+\'\\(\\([[:digit:]]\\{1,3\\}\\.\\)\\{3\\}[[:digit:]]\\{1,3\\}\\)\' is far more
+secure than a simple \'\\(.*\\)\'.
+Additionally,
+.IR mf2b
+is probably best run as unpriviledged user with limited execute permissions.
+.SH AUTHOR
+Phil Sutter <phil AT nwl DOT cc>
+.SH "SEE ALSO"
+.BR mf2b (8)
+.BR regex (7)

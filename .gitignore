@@ -30,3 +30,17 @@
 
 # Debug files
 *.dSYM/
+
+# binary output
+mf2b
+tests/testregex
+tests/testregex2
+tests/unit/action
+tests/unit/config
+tests/unit/logging
+tests/unit/matchlist
+tests/unit/substr
+tests/unit/wordsplit
+
+# temporary files
+*.tar.gz

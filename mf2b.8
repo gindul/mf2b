@@ -1,0 +1,94 @@
+.TH MF2B 8 "JANUARY 2014" Linux "System Manager's Manual"
+.SH NAME
+mf2b \- micro fail2ban
+.SH SYNOPSIS
+.B mf2b [-fqv] [-c
+.I config-file
+.B ] [-l
+.I log-file
+.B ] [-p
+.I pid-file
+.B ] [-r
+.I chroot-dir
+.B ]
+.SH DESCRIPTION
+.B mf2b
+acts as a replacement to the well-known
+.IR fail2ban
+daemon, but with embedded systems in mind. Therefore it has been written in pure
+C and doesn't depend on external libraries to be present on the target. Despite
+the similar concept, it's not a drop-in replacement as configuration syntax
+aligns more with that of
+.IR logrotate .
+.SH OPTIONS
+.IP "-c config-file"
+Read configuration from
+.I config-file
+instead of the default
+.IR /etc/mf2b.conf .
+.IP -f
+Do not fork into background. Log output is then sent to
+.IR stderr
+instead of
+.IR syslog
+when daemonising.
+.IP "-l log-file"
+Change log output to
+.I log-file
+instead of the default of
+.IR stderr
+or
+.IR syslog
+when
+.IR -f
+has not been specified. The argument
+.I log-file
+may either be a path to a file log messages are to be appended to,
+.IR stderr
+if log messages should go to standard error or
+.IR syslog
+if log messages should be sent to the syslog daemon.
+.IP -q
+Decrease log verbosity from the default of (as in syslog-terminology
+.IR LOG_ERR
+down to
+.IR LOG_CRIT
+or no logging at all, so (without any
+.IR -v
+given before) this option may effectively be passed up to two times.
+.IP "-p pid-file"
+Write daemon's process ID to
+.IR pid-file .
+If multiple instances are started with the same
+.I pid-file
+specified, the file will contain the latest executed process' ID.
+.IP "-r chroot-dir"
+Change root directory to
+.I chroot-dir
+prior to going into normal service. For this to work,
+.IR mf2b
+has to be running with effective user ID 0.
+.IP -v
+Increase log verbosity from the default of (as in syslog-terminology
+.IR LOG_ERR
+up to
+.IR LOG_WARNING ,
+.IR LOG_NOTICE ,
+.IR LOG_INFO ,
+or
+.IR LOG_DEBUG
+respectively, so (without any
+.IR -q
+given before) this option may effectively be passed up to four times.
+.SH FILES
+.I /etc/mf2b.conf
+.RS
+The default configuration file. See
+.BR mf2b.conf (5)
+for further details.
+.SH BUGS
+There certainly are, but of course this is subject to change. :)
+.SH AUTHOR
+Phil Sutter <phil AT nwl DOT cc>
+.SH "SEE ALSO"
+.BR mf2b.conf (5)

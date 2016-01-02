@@ -1,0 +1,5 @@
+- Maybe use a regular expression to match words in a string?
+  Seems to be quite hard, maybe not worth the effort.
+- performance testing
+- more complex function tests
+- improve function test framework

@@ -1,0 +1,108 @@
+/* config.c - mf2b config parser unit test
+ *
+ * Copyright (C) 2014  Phil Sutter <phil@nwl.cc>
+ *
+ * This file is part of Micro Fail2Ban, licensed under
+ * GPLv3 or later. See file LICENSE in this source tree.
+ */
+#include <assert.h>
+#include <stdio.h>
+
+#include "../../logging.c"
+#include "../../config.c"
+#include "../../matchlist.c"
+
+#define TRIMSTR "  \t  bla  \t \t  "
+
+char *argv1[] = {"echo", "bla", NULL};
+char *argv2[] = {"echo", "blub", NULL};
+char *argv3[] = {"bla", NULL};
+char *argv4[] = {"blub", NULL};
+
+struct {
+	const char *cfgstr;
+	const struct f2b_desc desc[1];
+	int ndesc;
+	const struct f2b_action act[2];
+} testobj[] = {{
+	.cfgstr = "limit 3\ntimeout 3\nban \"echo bla\"\nunban \"echo blub\"\n/var/log/messages",
+	.ndesc = 1,
+	.desc = {{
+		.fname = "/var/log/messages",
+		.nact = 1,
+	}},
+	.act = {{
+		.limit = 3,
+		.timeout = 3,
+		.ban = argv1,
+		.unban = argv2,
+	}}
+}, {
+	.cfgstr = "limit 3\ntimeout 3\n/var/log/messages {\nban bla unban blub }",
+	.ndesc = 1,
+	.desc = {{
+		.fname = "/var/log/messages",
+		.nact = 2,	/* default + custom one */
+	}},
+	.act = {{
+		.limit = 3,
+		.timeout = 3,
+	}, {
+		.limit = 3,
+		.timeout = 3,
+		.ban = argv3,
+		.unban = argv4,
+	}}
+}, { NULL }};
+
+int main(void)
+{
+	char *cfgstr;
+	struct f2b_desc *desc;
+	int ndesc;
+	struct f2b_action *act;
+	int nact;
+	int i, j, k;
+
+	for (i = 0; testobj[i].cfgstr; i++) {
+		cfgstr = strdup(testobj[i].cfgstr);
+		assert(!parse_config_str(cfgstr, &desc, &ndesc));
+		free(cfgstr);
+		assert(ndesc == testobj[i].ndesc);
+		for (j = 0; j < testobj[i].ndesc; j++) {
+			assert(desc[j].fname);
+			assert(!strcmp(desc[j].fname, testobj[i].desc[j].fname));
+			assert(desc[j].nact == testobj[i].desc[j].nact);
+			for (k = 0; k < testobj[i].desc[j].nact; k++) {
+				assert(desc[j].act[k].limit == testobj[i].act[k].limit);
+				assert(desc[j].act[k].timeout == testobj[i].act[k].timeout);
+				if (testobj[i].act[k].ban) {
+					assert(desc[j].act[k].ban);
+					for (k = 0; testobj[j].ban[k]; k++)
+						assert(!strcmp(desc[j].act[j].ban[k], testobj[i].act[j].ban[k]));
+				}
+				if (testobj[i].act[j].unban) {
+					assert(desc[j].act[j].unban);
+					for (k = 0; testobj[j].unban[k]; k++)
+						assert(!strcmp(desc[j].act[j].unban[k], testobj[i].act[j].unban[k]));
+				}
+			}
+		}
+		assert(nact == testobj[i].nact);
+		for (j = 0; j < testobj[i].nact; j++) {
+			assert(act[j].limit == testobj[i].act[j].limit);
+			assert(act[j].timeout == testobj[i].act[j].timeout);
+			if (testobj[i].act[j].ban) {
+				assert(act[j].ban);
+				for (k = 0; testobj[j].ban[k]; k++)
+					assert(!strcmp(act[j].ban[k], testobj[i].act[j].ban[k]));
+			}
+			if (testobj[i].act[j].unban) {
+				assert(act[j].unban);
+				for (k = 0; testobj[j].unban[k]; k++)
+					assert(!strcmp(act[j].unban[k], testobj[i].act[j].unban[k]));
+			}
+		}
+	}
+	return 0;
+}
